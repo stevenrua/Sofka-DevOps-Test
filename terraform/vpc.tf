@@ -79,7 +79,9 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
+  tags = {
+    Name = "ecsTaskExecutionRole-${local.sufix}"
+  }
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -101,8 +103,12 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
 }
 
-resource "aws_ecs_task_definition" "my_task" {
-  family                   = "my_task_definition"
+resource "aws_ecs_task_definition" "task_definition_fargate" {
+  tags = {
+    Name = "task_definition_fargate-${local.sufix}"
+  }
+
+  family                   = "task_definition_fargate"
   requires_compatibilities = ["FARGATE"]
   network_mode            = "awsvpc"
   cpu                     = "256"  
@@ -127,20 +133,27 @@ resource "aws_ecs_task_definition" "my_task" {
   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 }
 
-resource "aws_ecs_cluster" "my_cluster" {
-  name = "my_cluster"
+resource "aws_ecs_cluster" "ecs_cluster_time_off" {
+
+  name = "ecs_cluster_time_off"
+  tags = {
+    Name = "ecs_cluster_time_off-${local.sufix}"
+  }  
 }
 
-resource "aws_ecs_service" "my_service" {
-  name            = "my_service"
-  cluster         = aws_ecs_cluster.my_cluster.id
-  task_definition = aws_ecs_task_definition.my_task.arn
+resource "aws_ecs_service" "service_time_off" {
+  tags = {
+    Name = "service_time_off-${local.sufix}"
+  }
+  name            = "service_time_off"
+  cluster         = aws_ecs_cluster.ecs_cluster_time_off.id
+  task_definition = aws_ecs_task_definition.task_definition_fargate.id
   desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
     subnets          = [aws_subnet.subnet_public_time_off.id]
-    security_groups  = [aws_security_group.sg_public_instance.id]  # Agrega los grupos de seguridad que necesites
+    security_groups  = [aws_security_group.sg_public_instance.id]
     assign_public_ip = true
   }
 }
